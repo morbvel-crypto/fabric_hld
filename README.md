@@ -73,9 +73,8 @@ sequenceDiagram
 
 ### Description
 
-- Fabric moves from data consumer to **data producer**, following a Data Mesh approach with data products.
-- Integration with internal systems (for example Salesforce and MuleSoft) uses MuleSoft and Logic Apps.
-- Each integration is governed by a **data contract**. Queries are generated automatically from the fields and rules defined in the contract, following the same metadata-driven approach as ingestion.
+- Fabric moves from data consumer to **data producer**, following a Data Mesh approach with governed data products.
+- Each data product is described by a **data contract**: a declarative definition of what is exposed and under which conditions. Consumption artefacts are generated from the contract, following the same metadata-driven approach as ingestion. Onboarding a new consumer is therefore a configuration change rather than a development effort.
 - Data is exposed through **shortcuts** in dedicated lakehouses. Access is granted according to the governance definitions.
 
 ### Sequence diagram
@@ -88,17 +87,15 @@ sequenceDiagram
     participant Gen as Contract Processing Framework
     participant IntLH as Integration Lakehouse (shortcuts)
     participant Gov as Governance and Access Control
-    participant Ext as MuleSoft / Logic Apps
-    participant Sys as Consumer System (e.g. Salesforce)
+    participant Consumer as Consumer System
 
-    Owner->>Contract: Define fields and rules
+    Owner->>Contract: Define data product contract
     Gen->>Contract: Read contract
-    Gen->>Gen: Generate query from fields and rules
+    Gen->>Gen: Generate consumption artefacts from contract
     Gen->>IntLH: Expose governed data through shortcuts
-    Gov->>IntLH: Apply access per governance definition
-    Ext->>IntLH: Read data product
-    IntLH-->>Ext: Governed data
-    Ext->>Sys: Deliver data
+    Gov->>IntLH: Apply access policy
+    Consumer->>IntLH: Read data product
+    IntLH-->>Consumer: Governed data
 ```
 
 ---
