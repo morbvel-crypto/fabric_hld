@@ -2,7 +2,7 @@
 
 ## 1. Purpose and scope
 
-This document describes the high-level design of a layered data platform built on Microsoft Fabric. It focuses on solution design: governance, data modelling, reporting and analytics, and the planned semantic (ontology) layer. It does not cover pipeline implementation.
+This document describes the high-level design of a layered data platform built on Microsoft Fabric. It focuses on solution design: governance, data modelling, reporting and analytics, the planned semantic (ontology) layer and AI readiness. It does not cover pipeline implementation.
 
 ## 2. Design principles
 
@@ -10,6 +10,7 @@ This document describes the high-level design of a layered data platform built o
 - **Governance by design:** lineage, access control and PII masking are built into the architecture instead of being added afterwards.
 - **Separation of concerns:** each layer has one purpose, a defined audience and its own access model.
 - **Everything as code:** GitFlow and CI/CD (Azure DevOps) for both logic and Fabric objects.
+- **AI-ready by design:** AI workloads consume data through the same governed path as any other consumer, with PII segregation and lineage already in place.
 
 ## 3. Architecture overview
 
@@ -204,7 +205,71 @@ sequenceDiagram
 
 ---
 
-## 8. Cross-cutting concerns
+## 8. AI readiness and roadmap
+
+AI is treated as another consumer of the governed platform, not as a separate stack. The foundations below are part of the architecture. The AI capabilities built on top are the **target state** and are presented as roadmap.
+
+**Current state:** Copilot is available to users as an application. There are no AI agents or AI integrations in the platform yet, so apart from the governance foundations described below, everything in this section is roadmap.
+
+### 8.1 Governed AI consumption
+
+**Foundation already in the design**
+
+- PII is segregated by design into `standard` and `controlled` schemas, so AI workloads can be scoped to `standard` only. Unmasked and PII values are never in their reach.
+- Lineage from Materialized Lake Views and dbt makes it possible to trace which data feeds any AI-generated answer.
+- Access control is defined once (dbt configuration, workspace and lakehouse permissions) and applies equally to people, reports and AI agents.
+
+**Target state (roadmap)**
+
+- Natural-language access to the semantic models, using an AI agent or Copilot that respects the permissions of the user asking.
+- The planned **ontology layer** acts as the grounding context for the agent. Shared business concepts and their mappings to each semantic model let the agent resolve a question in business language and answer across several models, instead of guessing which table or measure is meant.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Business User
+    participant Agent as AI Agent / Copilot (planned)
+    participant Onto as Ontology Layer (planned)
+    participant SM as Semantic Models
+    participant WHs as Warehouse (standard schema)
+    participant WHc as Warehouse (controlled schema)
+
+    User->>Agent: Ask a question in business language
+    Agent->>Onto: Resolve business concepts
+    Onto-->>Agent: Concept to model mappings
+    Agent->>SM: Query within the user's permissions
+    SM->>WHs: Read standard schema only
+    WHs-->>SM: Results
+    SM-->>Agent: Results
+    Agent-->>User: Answer
+    Note over WHc: Controlled schema is never in scope for AI workloads
+```
+
+### 8.2 AI-assisted authoring of manifests and contracts (complementary, roadmap)
+
+Because ingestion and data products are metadata-driven, an LLM can draft the configuration and a human reviews it. The change goes through the normal GitFlow pull request process, so it is reviewed, versioned and auditable like any other change.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Eng as Data Engineer
+    participant LLM as LLM Assistant (planned)
+    participant Repo as Git Repository
+    actor Rev as Reviewer
+    participant ADO as Azure DevOps CI/CD
+    participant WS as Fabric Workspace
+
+    Eng->>LLM: Provide source schema or data product definition
+    LLM-->>Eng: Draft manifest or contract
+    Eng->>Repo: Open pull request (GitFlow)
+    Rev->>Repo: Review and approve
+    Repo->>ADO: Trigger pipeline
+    ADO->>WS: Deploy manifest or contract
+```
+
+---
+
+## 9. Cross-cutting concerns
 
 - **CI/CD:** GitFlow with Azure DevOps pipelines for Fabric objects, logic and configuration (manifests).
 - **Governance:** lineage through MLVs, access control through dbt configuration and workspace and lakehouse permissions, PII segregation through the standard and controlled schemas, and data contracts for external consumption.
