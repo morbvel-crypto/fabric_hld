@@ -2,15 +2,14 @@
 
 ## Overview
 
-This document presents the architecture of a data platform built on Microsoft Fabric for a capital markets context. It is described at the level of strategy and solution design rather than implementation, and it covers data governance, data modelling, reporting and analytics, and AI.
+This document presents the architecture of a data platform built on Microsoft Fabric for a bank. It is described at the level of strategy and solution design rather than implementation, and it covers data governance, data modelling, reporting and analytics, and AI.
 
 ### Context and design drivers
 
-- Data comes from heterogeneous sources and channels (databases, SaaS, files, APIs, event streams, marketplaces), some of them on-premises.
-- The main source domains are Market Data, Trade Data, Reference Data, Fundamental Data, Alternative Data, Risk & Derivatives, and Regulatory & Compliance.
+- The platform serves several areas of the bank: Banking, Finance, Operational and Investment Management. Each area needs its own models, and those models must still reference each other.
+- The main information comes from client data held in a SaaS CRM (Salesforce) and from Investment Management data (performance, risks, securities and portfolios). Investment Management is the area closest to capital markets use cases.
 - The data includes PII, and reporting serves both regulatory bodies and internal users.
-- Several business areas (such as CRM, Finance and Operational) need their own models, and those models must still reference each other.
-- Business use cases, from pre-trade analytics to compliance, are served to users, data scientists and internal systems from the same governed data.
+- Users, data scientists and internal systems consume the same governed data.
 - Logic, objects and configuration have to be deployed repeatably, as code.
 
 ---
@@ -26,11 +25,13 @@ A governed, self-serve data platform on Microsoft Fabric that delivers trusted, 
 1. Ingest any source through one metadata-driven framework, so onboarding a new source is a configuration change, not a development project.
 2. Deliver trusted data products: dimensional models per business area and contract-based data products for internal systems.
 3. Govern by design: PII segregation, lineage, data quality and access control built into the platform instead of added afterwards.
-4. Serve the main capital markets use cases to users, data scientists and internal systems from one governed golden layer.
-5. Simplify consumption: semantic models today, a cross-model ontology layer next, which is also the foundation for AI.
-6. Accelerate delivery of data products through an AI-assisted software development lifecycle, with humans supervising every gate.
+4. Serve the bank's business areas (Banking, Finance, Operational and Investment Management) to users, data scientists and internal systems from one governed golden layer.
+5. Simplify consumption: semantic models today, and a cross-model ontology layer next, which is the foundation for "talk to your data" (natural-language access).
+6. Accelerate the delivery of data products through an AI-assisted software development lifecycle, with humans supervising every gate (roadmap).
 
 ### 1.3 Strategic pillars (Data Mesh)
+
+![Data Mesh on Microsoft Fabric: domains own their data products, the Data Fabric delivers them in a standard way and the same governance applies to every domain](images/data-mesh.png)
 
 | Pillar | What it means here |
 |---|---|
@@ -38,125 +39,36 @@ A governed, self-serve data platform on Microsoft Fabric that delivers trusted, 
 | **Data Fabric** | Standardised, repeatable delivery: metadata-driven frameworks, CI/CD and everything as code (GitFlow, Azure DevOps). |
 | **Data Governance** | The backbone: PII segregation, lineage, data quality, access control and data contracts, applied the same way across all domains. |
 
-```mermaid
-flowchart TB
-    subgraph D1["Domain: CRM"]
-        A1["Sources"] --> A2["Dimensional model"] --> A3["Data product"]
-    end
-    subgraph D2["Domain: Finance"]
-        B1["Sources"] --> B2["Dimensional model"] --> B3["Data product"]
-    end
-    subgraph D3["Domain: Operational"]
-        C1["Sources"] --> C2["Dimensional model"] --> C3["Data product"]
-    end
-    A3 --> BI["BI and reporting"]
-    B3 --> BI
-    C3 --> BI
-    A3 --> AA["Advanced analytics and AI"]
-    B3 --> AA
-    C3 --> AA
-    BI --> Gov["Data governance<br/>Same governance and access control across all domains"]
-    AA --> Gov
-```
-
-*Each domain owns its data products. The technology and the governance are the same across domains.*
-
 ### 1.4 Operating model
 
 Federated. A central platform team owns the ingestion and Raw layers, the frameworks and CI/CD. Business areas own their dimensional models and semantic models, and models are designed to reference each other across areas.
 
 ### 1.5 Capability map
 
+![Capability map: data sources, data integration, data storage and services, analytics and business areas, with data governance and data foundation as cross-functional capabilities](images/capability-map.png)
+
 | Capability | What it delivers | Layer | Status |
 |---|---|---|---|
-| Data Integration | Metadata-driven ingestion framework over files, APIs, event streams, marketplaces, mail, databases and SaaS | Ingestion | In place |
+| Data Integration | Metadata-driven ingestion framework over SaaS and database channels | Ingestion | In place |
 | Data Storage | Lakehouse per source, dimensional Warehouse | Raw, Modelling | In place |
 | Data Governance | PII segregation, lineage, data quality, access control, contracts | All layers | In place |
-| Data Services | Data products, semantic models, ontologies | Data Products, Semantic | Partly in place, ontologies planned |
-| Analytics | Reporting and business use cases today, AI later | Semantic / Use cases | Reporting in place, AI on the roadmap |
+| Data Services | Data products, semantic models, ontologies | Integration, Semantic | Partly in place, ontologies planned |
+| Analytics | Reporting today, talk to your data later | Semantic | Reporting in place, talk to your data on the roadmap |
 | Data Foundation | GitFlow, CI/CD, orchestration, monitoring, deployment through Fabric APIs | All layers | In place |
 
-### 1.6 Success measures
-
-Measures that show whether the strategy is working:
-
-- Time to onboard a new source.
-- Share of data products with a named owner and a contract.
-- PII incidents.
-- Report adoption.
-- Lead time to deliver a new data product.
-
-### 1.7 Evolution
+### 1.6 Evolution
 
 | Horizon | Focus |
 |---|---|
 | **In place** | Metadata-driven ingestion and Raw framework, dimensional Modelling layer with PII segregation, semantic models and reporting, CI/CD with GitFlow. |
-| **Next** | Wider rollout of data products and contracts in the Data Products layer. Ontology layer on top of the semantic models. AI-assisted delivery of data products. |
-| **Later** | Natural-language access ("talk to your data") grounded on the ontology layer. AI-assisted authoring of manifests and contracts. |
+| **Next** | Wider rollout of data products and contracts in the Integration layer. Ontology layer on top of the semantic models. |
+| **Later** | Talk to your data, grounded on the ontology layer. AI-assisted delivery of data products (AI SDLC and AI-assisted authoring of manifests and contracts), as a separate track. |
 
 ---
 
 ## 2. Logical architecture
 
-```mermaid
-flowchart TB
-    subgraph Flow["End-to-end flow"]
-        direction LR
-        subgraph Src["Data sources"]
-            direction TB
-            S1["Market Data"]
-            S2["Trade Data"]
-            S3["Reference Data"]
-            S4["Fundamental Data"]
-            S5["Alternative Data"]
-            S6["Risk and Derivatives"]
-            S7["Regulatory and Compliance"]
-        end
-        Ing["Ingestion layer<br/>Files, Marketplace, API,<br/>Event Hub, Mail, Databases and SaaS<br/>Quality and completeness"]
-        subgraph Platform["Microsoft Fabric platform"]
-            direction LR
-            Raw["Raw layer<br/>Lakehouse per source<br/>Historical and snapshot Delta"]
-            Mod["Modelling layer (golden)<br/>MLVs and dbt<br/>Warehouse: standard and controlled"]
-            Sem["Semantic and reporting layer<br/>Semantic models and reports"]
-            DP["Data Products layer<br/>Contracts"]
-            Raw --> Mod
-            Mod --> Sem
-            Mod --> DP
-        end
-        subgraph UC["Business use cases"]
-            direction TB
-            U1["Pre-trade Analytics"]
-            U2["Post-trade Analytics"]
-            U3["Quant"]
-            U4["Market Data"]
-            U5["Client Analytics"]
-            U6["Market and Liquidity Risk"]
-            U7["Credit Risk"]
-            U8["Compliance and Regulations"]
-        end
-        subgraph Con["Consumers"]
-            direction TB
-            C1["User"]
-            C2["Data scientist"]
-            C3["Internal systems"]
-        end
-        Src --> Ing
-        Ing --> Raw
-        Sem --> UC
-        UC --> Con
-        DP --> Con
-    end
-    subgraph Trans["Transversal to the whole platform"]
-        direction LR
-        Gov["Data governance<br/>Lineage, access control, PII masking,<br/>ownership, contracts"]
-        DQ["Data quality"]
-        Mon["Monitoring"]
-        Infra["Infrastructure and foundation<br/>GitFlow, CI/CD, orchestration,<br/>security, cost"]
-    end
-    Flow ~~~ Trans
-    Onto["Ontology layer (planned)"] -.-> Sem
-    AI["AI consumption (roadmap)"] -.-> Onto
-```
+![Logical architecture, left to right: sources, ingestion, Raw, Modelling, Semantic and reporting, Integration, business areas and consumers, with governance and foundation across the platform](images/logical-architecture.png)
 
 Design principles that apply to every layer:
 
@@ -172,7 +84,7 @@ Design principles that apply to every layer:
 
 | Decision | Rationale |
 |---|---|
-| A dedicated ingestion layer between the sources and Raw | Channels (files, APIs, event streams, marketplaces, mail, databases) are handled in one place, with quality and completeness checks at the door, so Raw stays a clean, source-shaped store. |
+| A dedicated ingestion layer between the sources and Raw | The source channels (SaaS and databases) are handled in one place, with quality and completeness checks at the door, so Raw stays a clean, source-shaped store. |
 | One manifest per source, stored in the source's own lakehouse in OneLake | Pipelines and Spark jobs become fully parameterisable and agnostic of the source and of the data. A new source is a configuration change. |
 | Historical and snapshot Delta tables per source, with Change Data Feed on | Keeps how each record evolved over time and a mirror of the source at each point in time, and lets downstream layers process only the latest changes. |
 | Raw restricted to Data Engineering, with no business rules | The business never depends on raw objects. Business rules are defined and applied in later layers. |
@@ -182,7 +94,7 @@ Design principles that apply to every layer:
 | Materialized Lake Views and dbt | MLVs process only the latest records thanks to Change Data Feed and give clear lineage. dbt defines where data is read and written, access control through configuration, and masking through macros. |
 | Data contracts and shortcuts for data products | Fabric acts as a data producer. Integration is agile, contract processing follows the same metadata-driven approach as ingestion, and access follows the governance definitions. |
 | Ontology layer on top of the semantic models (planned) | Enables queries across several semantic models so people can build reports and dashboards quickly, and gives AI a business-level grounding layer. |
-| AI-assisted software development lifecycle with human gates | Autonomous agents handle routine delivery work end to end while people direct, review and approve at every gate, which shortens lead time without weakening governance. |
+| Talk to your data, grounded on the ontology layer (roadmap) | Lets users ask questions in business language. The agent resolves concepts through the ontologies and queries the semantic models within the user's permissions, reading `standard` data only. |
 
 ---
 
@@ -190,25 +102,22 @@ Design principles that apply to every layer:
 
 ### 4.1 Data sources
 
-**Purpose.** Identify the source domains the platform serves and treat each one as a managed source, with its own manifest and lakehouse.
+**Purpose.** Identify the information the platform serves and treat each source as a managed source, with its own manifest and lakehouse.
 
-| Source domain | Typical content |
+| Source | Typical content |
 |---|---|
-| Market Data | Prices, quotes and other market feeds |
-| Trade Data | Orders, executions and positions |
-| Reference Data | Instruments, counterparties and other master data |
-| Fundamental Data | Company and economic fundamentals |
-| Alternative Data | Non-traditional and third-party datasets |
-| Risk & Derivatives | Risk measures and derivative trade data |
-| Regulatory & Compliance | Regulatory and compliance records |
+| Client information (Salesforce) | Account, Contact, Lead and related objects |
+| Investment Management | Performance, Risks, Securities and Portfolio data |
+
+Investment Management is the area closest to capital markets use cases.
 
 ### 4.2 Ingestion layer (Data Integration)
 
-**Purpose.** Bring any source into the platform through one reusable, metadata-driven framework, and check quality and completeness on the way in.
+**Purpose.** Bring the client and Investment Management sources into the platform through one reusable, metadata-driven framework, and check quality and completeness on the way in.
 
 **Typical patterns**
 
-- Channels: files, marketplaces, APIs, event streams (Event Hub), mail, and databases and SaaS through On-Premises Data Gateways.
+- Channels: SaaS connectors (client information from Salesforce) and database connectors (SQL Server, Oracle and others) through On-Premises Data Gateways.
 - Metadata-driven ingestion: one manifest per source defines what is ingested, from where and to where, the load pattern (full, incremental or CDC) and the columns used for ingestion and processing.
 - Fabric Data Pipelines and Spark jobs read the manifest, so they are source-agnostic.
 - Quality and completeness checks are applied at ingestion, before data reaches Raw.
@@ -222,7 +131,7 @@ Design principles that apply to every layer:
 
 **Success measures.** Time to onboard a new source; share of sources running on the framework.
 
-**Key capabilities.** Batch, incremental, CDC and event-based ingestion; manifest management; quality and completeness checks; automated deployment.
+**Key capabilities.** Batch, incremental and CDC ingestion; manifest management; quality and completeness checks; automated deployment.
 
 ### 4.3 Raw layer (Data Storage)
 
@@ -250,7 +159,7 @@ Design principles that apply to every layer:
 
 **Typical patterns**
 
-- A star schema per business area (for example CRM, Finance, Operational), designed to reference each other.
+- A star schema per business area (Banking, Finance, Operational and Investment Management), designed to reference each other.
 - SCD Type 2 dimensions to keep history; facts that reference dimensions through surrogate keys; bridge tables to expand relationships between dimensions.
 - Two schemas per model. `standard` holds non-PII columns plus masked versions of sensitive attributes. `controlled` holds the PII values and the unmasked originals. As an illustration, of 100 columns about 90 go to `standard` (5 of them masked) and about 10 go to `controlled` (the 5 unmasked originals plus 5 PII columns).
 - Materialized Lake Views apply joins and processing logic and, thanks to Change Data Feed on the raw snapshots, process only the latest changes. dbt reads from the lakehouse and writes to the Warehouse. Dimensions are built with dbt snapshots, and facts are queries on top of those snapshots.
@@ -285,7 +194,7 @@ Design principles that apply to every layer:
 
 **Key capabilities.** Semantic models; regulatory and internal reporting; ontology layer (planned).
 
-### 4.6 Data Products layer (Data Services)
+### 4.6 Integration layer (Data Products)
 
 **Purpose.** Expose governed data products to internal systems through data contracts. Fabric moves from data consumer to data producer.
 
@@ -305,16 +214,16 @@ Design principles that apply to every layer:
 
 **Key capabilities.** Data contracts; contract processing framework; governed access through shortcuts.
 
-### 4.7 Business use cases and consumers (Analytics)
+### 4.7 Business areas and consumers (Analytics)
 
-**Purpose.** Turn the golden layer into value for the business through the most common capital markets use cases, each served to the right consumer.
+**Purpose.** Serve the bank's business areas from the golden layer, each one to the right consumer.
 
-| Group | Use cases |
+| Business area | Content |
 |---|---|
-| Trading analytics | Pre-trade Analytics, Post-trade Analytics |
-| Quantitative and market | Quant, Market Data |
-| Client | Client Analytics |
-| Risk, compliance and regulation | Market & Liquidity Risk, Credit Risk, Compliance & Regulations |
+| Banking | Its own dimensional model and semantic models |
+| Finance | Its own dimensional model and semantic models |
+| Operational | Its own dimensional model and semantic models |
+| Investment Management | Securities, risk, portfolio and performance data, with its own dimensional model and semantic models |
 
 | Consumer | How it consumes |
 |---|---|
@@ -324,9 +233,9 @@ Design principles that apply to every layer:
 
 All consumers use the same governed path, so access and PII rules apply equally to every one of them.
 
-### 4.8 AI: delivery and consumption (Analytics)
+### 4.8 AI: talk to your data (roadmap)
 
-AI is treated as another part of the governed platform, not as a separate stack. It appears in two ways: in how data products are delivered, and in how data is consumed.
+AI is treated as another consumer of the governed platform, not as a separate stack.
 
 **Current state.** Copilot is available to users as an application. There are no AI agents or AI integrations in the platform yet, so apart from the governance foundations below, everything in this section is roadmap.
 
@@ -334,9 +243,15 @@ AI is treated as another part of the governed platform, not as a separate stack.
 
 - PII is segregated into `standard` and `controlled` schemas, so AI workloads can be scoped to `standard` only. Unmasked and PII values are never in their reach.
 - Lineage from Materialized Lake Views and dbt makes it possible to trace which data feeds any AI-generated answer.
-- Access control is defined once and applies equally to people, reports and AI agents.
+- Access control is defined once and applies equally to people, reports and AI.
 
-#### AI SDLC: accelerating delivery with supervised autonomous agents
+**Talk to your data (roadmap).** Natural-language access to the semantic models through an AI agent or Copilot that respects the permissions of the user asking. The ontology layer acts as the grounding context, so the agent can resolve a question in business language and answer across several models (see Appendix A.6).
+
+### 4.9 AI-assisted delivery (roadmap)
+
+AI agents are a separate track from talk to your data. They support how data products are delivered, not how data is consumed, and they are on the roadmap. No AI agents are in use today.
+
+#### AI SDLC: accelerating delivery with supervised autonomous agents (roadmap)
 
 The target delivery model uses specialised AI agents to run the software lifecycle of a data product end to end, while people direct, review and approve at every gate.
 
@@ -347,11 +262,7 @@ The target delivery model uses specialised AI agents to run the software lifecyc
 - **Knowledge compounds.** Corporate standards, coding standards and the business knowledge base are shared with every agent, with ontology-driven retrieval, so decisions and patterns are not lost between sprints or team members.
 - **Governance and audit are built in.** Every specification decision, code change, validation result and agent action is recorded, and approval workflows and cost tracking are enforced at platform level.
 - **The builder never sees the exam.** Validation scenarios are written independently during specification and kept separate from the agents that build, so the build is not tuned to pass the test instead of meeting the requirement.
-- **Outcome.** Requirements in hours, cycle time in hours to days, and lead time in days to weeks (see Appendix A.8).
-
-#### Business use case: talk to your data (roadmap)
-
-Natural-language access to the semantic models through an AI agent or Copilot that respects the permissions of the user asking. The ontology layer acts as the grounding context, so the agent can resolve a question in business language and answer across several models (see Appendix A.6).
+- **Target outcome.** Requirements in hours, cycle time in hours to days, and lead time in days to weeks (see Appendix A.8).
 
 #### AI-assisted authoring of manifests and contracts (roadmap)
 
@@ -405,7 +316,7 @@ sequenceDiagram
     Spark->>LH: Write snapshot Delta table (CDF on)
 ```
 
-### A.2 Data Products layer: data products and contracts
+### A.2 Integration layer: data products and contracts
 
 ```mermaid
 sequenceDiagram
@@ -413,7 +324,7 @@ sequenceDiagram
     actor Owner as Data Product Owner
     participant Contract as Data Contract
     participant Gen as Contract Processing Framework
-    participant IntLH as Data Products Lakehouse (shortcuts)
+    participant IntLH as Integration Lakehouse (shortcuts)
     participant Gov as Governance and Access Control
     participant Consumer as Consumer System
 
@@ -538,7 +449,7 @@ sequenceDiagram
     ADO->>WS: Deploy manifest or contract
 ```
 
-### A.8 AI SDLC: supervised autonomous delivery of a data product (target)
+### A.8 AI SDLC: supervised autonomous delivery of a data product (roadmap)
 
 ```mermaid
 sequenceDiagram
